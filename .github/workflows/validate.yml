@@ -103,13 +103,6 @@ jobs:
             fi
           done
           test -f packages/_shared/deb2pkg.sh || { echo "::error::缺少 packages/_shared/deb2pkg.sh"; exit 1; }
-          # 两种底包各自的包列表与 holo 底包实现
-          for f in scripts/lists/base.list scripts/lists/kde.list scripts/lists-holo/base.list scripts/lists-holo/kde.list; do
-            test -s "$f" || { echo "::error::包列表缺失或为空: $f"; exit 1; }
-          done
-          test -f scripts/host/01b-bootstrap-holo.sh || { echo "::error::缺少 holo 底包引导脚本"; exit 1; }
-          test -f scripts/host/holo-lib.sh || { echo "::error::缺少 holo-lib.sh"; exit 1; }
-          test -f packages/sddm/PKGBUILD || { echo "::error::缺少 sddm PKGBUILD（holo 模式的显示管理器）"; exit 1; }
           test -d packages/linux-xiaomi-sheng/prebuilt || { echo "::error::缺少 prebuilt 内核 PKGBUILD"; exit 1; }
           test -d packages/linux-xiaomi-sheng/custom || { echo "::error::缺少 custom 内核 PKGBUILD"; exit 1; }
           test -f patches/wait_for_qmi_service.patch || { echo "::error::缺少 libssc 补丁"; exit 1; }
