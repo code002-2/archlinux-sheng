@@ -33,7 +33,7 @@ build() {
     -DINSTALL_PAM_CONFIGURATION=ON \
     -DUSE_ELOGIND=OFF \
     -DENABLE_PAM=ON \
-    -DCMAKE_POLICY_VERSION_MINIMUM=3.5 `
+    -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
     -DDBUS_CONFIG_FILENAME="org.freedesktop.DisplayManager.conf"
   cmake --build build
 }
