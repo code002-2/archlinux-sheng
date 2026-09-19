@@ -28,7 +28,8 @@ build() {
   cd "$srcdir/sddm-${pkgver}" || exit 1
   cmake -B build -S . \
     -DCMAKE_INSTALL_PREFIX=/usr \
-    -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_BUILD_TYPE=Release `
+    -DBUILD_WITH_QT6=ON `
     -DBUILD_MAN_PAGES=OFF \
     -DINSTALL_PAM_CONFIGURATION=ON \
     -DUSE_ELOGIND=OFF \

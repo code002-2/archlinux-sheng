@@ -173,7 +173,7 @@ alarm_chroot_run "$ALARM_CHROOT" pacman -S --noconfirm --needed \
 # 可选集合：个别包名可能在不同时间点不存在或被合并，装不上不影响主流程
 # shellcheck disable=SC2086
 alarm_chroot_run "$ALARM_CHROOT" pacman -S --noconfirm --needed \
-  bsdtar jq ccache $ALARM_EXTRA_PKGS || warn "可选构建工具安装失败（已忽略）"
+  libarchive jq ccache $ALARM_EXTRA_PKGS || warn "可选构建工具安装失败（已忽略）"
 
 # ---------------------------------------------------------------------------
 # 4.5) 移除构建 chroot 自带的发行版内核
