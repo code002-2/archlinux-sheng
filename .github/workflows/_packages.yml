@@ -616,6 +616,9 @@ jobs:
   build-sddm:
     name: Build sddm (holo-core)
     if: inputs.rootfs_base == 'holo-core'
+    # 可选件：SDDM 装不上时镜像会自动退回 plasma-autologin 兜底方案（见 40-system-config.sh），
+    # 因此这里失败不阻塞整轮构建，只让 sddm-pkg 产物缺失。
+    continue-on-error: true
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 60
     steps:
