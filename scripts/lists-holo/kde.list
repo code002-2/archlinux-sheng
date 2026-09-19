@@ -4,6 +4,7 @@
 #   * sddm → 无显示管理器：由 40-system-config.sh 写一个 systemd autologin 服务直接起
 #            startplasma-wayland（autologin=true 时）；autologin=false 时保持 tty 登录后手动 startplasma-wayland
 #   * kate → 编辑器缺失（可用 konsole + vim/nano）
+qt6-wayland
 plasma-desktop
 plasma-workspace
 plasma-nm
