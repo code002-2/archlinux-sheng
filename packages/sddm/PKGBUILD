@@ -1,0 +1,54 @@
+# Maintainer: archlinux-sheng
+# 来源：上游 sddm/sddm v0.21.0 发布 tarball（KDE 的显示管理器）
+#
+# 为什么要自己编：Holo Core（Steam Frame 的 Arch aarch64 预览）源里**没有**任何显示管理器
+#   （sddm / gdm / lightdm / greetd / ly 全无），但它的 core/extra 里有 SDDM 的全部构建依赖
+#   （cmake、extra-cmake-modules、qt6-base/declarative/svg/tools、xcb-util 全家、libxkbcommon、
+#    pam、systemd、upower…）。因此这里用 makepkg 自己产一个 sddm 包，只在 rootfs_base=holo-core
+#   时随设备包装入，让 holo 模式也有正规的图形登录界面（与 ALARM 模式行为一致）。
+#
+# 说明：
+#   * kwin 是合成器（plasma-workspace 的依赖），不是显示管理器，两者不要混
+#   * 关掉 man pages（BUILD_MAN_PAGES=OFF）：省掉 docbook-xsl 之类的构建链，包更小
+#   * 不装 PAM 配置文件以外的东西；Arch 的 pacman 侧不做 postinst，用户/组由 sysusers 管
+pkgname=sddm
+pkgver=0.21.0
+pkgrel=1
+pkgdesc="QML based X11 and Wayland display manager (built for sheng / holo-core base)"
+arch=('aarch64')
+url="https://github.com/sddm/sddm"
+license=('GPL-2.0-or-later')
+depends=('qt6-base' 'qt6-declarative' 'qt6-svg' 'libxcb' 'xcb-util-image' 'xcb-util-keysyms' 'xcb-util-renderutil' 'libxkbcommon' 'pam' 'systemd' 'upower')
+makedepends=('cmake' 'ninja' 'extra-cmake-modules' 'qt6-tools' 'qt6-wayland' 'git')
+options=('!strip' '!debug' '!lto')
+source=("sddm-${pkgver}.tar.gz::https://github.com/sddm/sddm/archive/refs/tags/v${pkgver}.tar.gz")
+sha256sums=('SKIP')
+
+build() {
+  cd "$srcdir/sddm-${pkgver}" || exit 1
+  cmake -B build -S . \
+    -DCMAKE_INSTALL_PREFIX=/usr \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DBUILD_MAN_PAGES=OFF \
+    -DINSTALL_PAM_CONFIGURATION=ON \
+    -DUSE_ELOGIND=OFF \
+    -DENABLE_PAM=ON \
+    -DDBUS_CONFIG_FILENAME="org.freedesktop.DisplayManager.conf"
+  cmake --build build
+}
+
+package() {
+  cd "$srcdir/sddm-${pkgver}" || exit 1
+  DESTDIR="$pkgdir" cmake --install build
+
+  # 校验：systemd unit 与 PAM 配置是"能当登录管理器用"的最低要求
+  [[ -f "$pkgdir/usr/lib/systemd/system/sddm.service" ]] || {
+    error "未安装 sddm.service，包内容与预期不符"
+    exit 1
+  }
+  if [[ ! -f "$pkgdir/etc/pam.d/sddm" && ! -f "$pkgdir/usr/lib/pam.d/sddm" ]]; then
+    warn "未找到 pam.d/sddm（登录会失败；请检查 INSTALL_PAM_CONFIGURATION）"
+  fi
+  # 记录：SDDM 需要图形会话入口（plasma.desktop）由 plasma-workspace 提供
+  [[ -d "$pkgdir/usr/share/sddm" ]] || warn "缺少 /usr/share/sddm（主题/配置目录）"
+}

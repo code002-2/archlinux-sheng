@@ -361,6 +361,12 @@ jobs:
       - name: Collect sheng-devauth
         uses: actions/download-artifact@v8
         with: { name: sheng-devauth-pkg, path: pkgs }
+      # SDDM（显示管理器）：只有 holo-core 模式需要 —— Holo 源里没有任何显示管理器，
+      # 由本仓库自己 makepkg 构建（见 _packages.yml 的 build-sddm 作业 + packages/sddm/）。
+      - name: Collect sddm (holo-core only)
+        if: inputs.rootfs_base == 'holo-core'
+        uses: actions/download-artifact@v8
+        with: { name: sddm-pkg, path: pkgs }
       - name: Collect alsa-xiaomi-sheng
         uses: actions/download-artifact@v8
         with: { name: alsa-xiaomi-sheng-pkg, path: pkgs }

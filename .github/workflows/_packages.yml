@@ -608,6 +608,49 @@ jobs:
           if-no-files-found: error
 
   # ---------------------------------------------------------------------------
+  # 11) SDDM（显示管理器）—— 只给 holo-core 底包用
+  #   Holo Core 源里没有任何显示管理器（sddm/gdm/lightdm/greetd 全无），但构建依赖齐全，
+  #   因此自己 makepkg 一个。ALARM 模式用仓库自带的 sddm，不用这个包（rootfs.yml 只在
+  #   rootfs_base=holo-core 时收集它）。
+  # ---------------------------------------------------------------------------
+  build-sddm:
+    name: Build sddm (holo-core)
+    if: inputs.rootfs_base == 'holo-core'
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install Host Tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq curl git zstd xz-utils
+      - name: Restore Build Chroot
+        id: alarmcache
+        uses: actions/cache@v6
+        with:
+          path: .chroot-cache/chroot.tar.zst
+          key: chroot-v3-${{ inputs.rootfs_base }}-${{ runner.arch }}-${{ hashFiles('scripts/host/20-alarm-chroot.sh', 'scripts/common/distro-env.sh', 'scripts/host/alarm-lib.sh', 'scripts/host/holo-lib.sh') }}
+      - name: Prepare Build Chroot
+        env:
+          ALARM_CHROOT_TAR: .chroot-cache/chroot.tar.zst
+        run: |
+          chmod +x scripts/host/20-alarm-chroot.sh
+          sudo env ROOTFS_BASE="$ROOTFS_BASE" ALARM_CHROOT_TAR="$ALARM_CHROOT_TAR" bash scripts/host/20-alarm-chroot.sh
+      - name: Build (makepkg)
+        run: |
+          chmod +x scripts/host/21-build-pkg.sh
+          sudo env ROOTFS_BASE="$ROOTFS_BASE" bash scripts/host/21-build-pkg.sh sddm
+      - name: Save Build Chroot
+        if: steps.alarmcache.outputs.cache-hit != 'true'
+        run: sudo env ROOTFS_BASE="$ROOTFS_BASE" ALARM_CHROOT_PACK=.chroot-cache/chroot.tar.zst bash scripts/host/20-alarm-chroot.sh
+      - uses: actions/upload-artifact@v7
+        with:
+          name: sddm-pkg
+          path: pkgs/sddm-*.pkg.tar.*
+          retention-days: 3
+          if-no-files-found: error
+
+  # ---------------------------------------------------------------------------
   # 说明：这里原本还有一个「一次构建全部包」的汇总作业（21-build-pkg.sh --all）。
   # 已移除，原因有两条（都不是风格问题）：
   #   1) 它会在每次构建里把 15 个包全部重建一遍，与上面逐个作业完全重复（浪费 30+ 分钟）；

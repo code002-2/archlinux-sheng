@@ -134,7 +134,9 @@ EOF
     systemctl set-default graphical.target
     ;;
   "KDE Plasma")
-    if [[ "$ROOTFS_BASE" == "holo-core" ]]; then
+    # holo 模式下如果本仓库构建的 sddm 装上了（_packages.yml 的 build-sddm 作业），
+    # 就走和 ALARM 完全一样的 SDDM 路径；否则退回 systemd 直起 Plasma 会话的兜底方案。
+    if [[ "$ROOTFS_BASE" == "holo-core" ]] && ! command -v sddm >/dev/null 2>&1; then
       # holo 源里没有 sddm：用 systemd 服务在 tty1 上直接拉起 Plasma Wayland 会话。
       # autologin=true 时开机即进桌面；false 时保持 tty 登录，登录后手动
       # `startplasma-wayland`（或在该用户 ~/.bash_profile 里自行 exec）。
