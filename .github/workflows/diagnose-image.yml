@@ -108,6 +108,22 @@ jobs:
             printf '    %-40s %s\n' "$t" "${state:-（未启用或不存在）}"
           done
 
+          echo "===== init（内核 exec 的第一个进程）====="
+          for cand in /sbin/init /usr/sbin/init /usr/lib/systemd/systemd; do
+            if sudo test -x "/mnt/img$cand"; then
+              target="$(sudo readlink -f "/mnt/img$cand" 2>/dev/null || echo '')"
+              echo "    [ OK ] $cand${target:+ -> $target}"
+            else
+              echo "    [FAIL] 缺 $cand"
+            fi
+          done
+          # 缺 /sbin/init 时内核 panic: No working init found → 实机全黑、背光不亮
+          if sudo ls /mnt/img/var/lib/pacman/local 2>/dev/null | grep -q '^systemd-sysvcompat-'; then
+            echo "    [ OK ] systemd-sysvcompat 已安装"
+          else
+            echo "    [FAIL] 未安装 systemd-sysvcompat（/sbin/init 的来源）"
+          fi
+
           echo "===== default.target ====="
           sudo readlink -f /mnt/img/etc/systemd/system/default.target 2>/dev/null || echo "(无 default.target 链接)"
 
