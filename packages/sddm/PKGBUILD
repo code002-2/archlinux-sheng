@@ -33,6 +33,7 @@ build() {
     -DINSTALL_PAM_CONFIGURATION=ON \
     -DUSE_ELOGIND=OFF \
     -DENABLE_PAM=ON \
+    -DCMAKE_POLICY_VERSION_MINIMUM=3.5 `# holo 源是 cmake 4.x，SDDM 0.21 的最低版本声明确认过旧
     -DDBUS_CONFIG_FILENAME="org.freedesktop.DisplayManager.conf"
   cmake --build build
 }
