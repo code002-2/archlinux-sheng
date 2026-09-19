@@ -43,13 +43,12 @@ on:
           - 'none'
           - 'firefox'
       rootfs_base:
-        description: '底包：alarm = Arch Linux ARM 滚动仓库；holo-core = Valve/Collabora 的 Steam Frame aarch64 预览底座（源冻结在 2025-11，只支持 KDE Plasma / server，无 plymouth/GNOME）'
+        description: '底包（已弃用 holo-core，仅保留 alarm：Arch Linux ARM 滚动仓库）'
         required: true
         type: choice
         default: 'alarm'
         options:
           - 'alarm'
-          - 'holo-core'
       autologin:
         description: '自动登录'
         required: false
