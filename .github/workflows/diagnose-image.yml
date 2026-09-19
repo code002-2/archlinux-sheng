@@ -124,6 +124,26 @@ jobs:
             echo "    [FAIL] 未安装 systemd-sysvcompat（/sbin/init 的来源）"
           fi
 
+          echo "===== 图形会话关键件 ====="
+          for bin in /usr/bin/kwin_wayland /usr/bin/startplasma-wayland /usr/bin/plasmashell /usr/bin/sddm; do
+            if sudo test -x "/mnt/img$bin"; then
+              miss="$(sudo chroot /mnt/img ldd "$bin" 2>/dev/null | grep 'not found' || true)"
+              if [ -n "$miss" ]; then
+                echo "    [FAIL] $bin 缺库:"; echo "$miss" | sed 's/^/        /'
+              else
+                echo "    [ OK ] $bin（动态库齐全）"
+              fi
+            else
+              echo "    [ -- ] $bin 不存在"
+            fi
+          done
+          echo "---- 会话入口 ----"
+          sudo ls /mnt/img/usr/share/wayland-sessions 2>/dev/null | sed 's/^/    wayland: /' || echo "    (无 wayland-sessions)"
+          echo "---- 关键包 ----"
+          for p in plasma-workspace kwin mesa qt6-wayland qt6-declarative xdg-desktop-portal-kde polkit-kde-agent sddm; do
+            if sudo ls /mnt/img/var/lib/pacman/local 2>/dev/null | grep -q "^$p-"; then echo "    [ OK ] $p"; else echo "    [FAIL] $p 未安装"; fi
+          done
+
           echo "===== default.target ====="
           sudo readlink -f /mnt/img/etc/systemd/system/default.target 2>/dev/null || echo "(无 default.target 链接)"
 
