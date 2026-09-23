@@ -59,8 +59,13 @@ on:
         required: false
         type: string
         default: 'master'
+      source_repo:
+        description: '检出哪个仓库的 scripts/ 与 packages/（本工作流被其它仓库 workflow_call 复用时必须显式指定，否则会检出调用方仓库）'
+        required: false
+        type: string
+        default: 'code002-2/archlinux-sheng'
       rootfs_base:
-        description: '底包：alarm（Arch Linux ARM 滚动）或 holo-core（Valve/Collabora 的 Steam Frame aarch64 预览底座）'
+        description: '底包：alarm 或 holo-core'
         required: false
         type: string
         default: 'alarm'
@@ -95,6 +100,10 @@ jobs:
         run: echo "✓ kernel_source=prebuilt，跳过内核编译"
 
       - uses: actions/checkout@v7
+
+        with:
+
+          repository: ${{ inputs.source_repo }}
         if: inputs.kernel_source == 'custom_build'
 
       - name: Install Host Tools
@@ -195,6 +204,10 @@ jobs:
         run: echo "✓ kernel_source=custom_build，跳过 prebuilt 内核重打包"
 
       - uses: actions/checkout@v7
+
+        with:
+
+          repository: ${{ inputs.source_repo }}
         if: inputs.kernel_source != 'custom_build'
 
       - name: Install Host Tools
@@ -265,6 +278,8 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v7
+        with:
+          repository: ${{ inputs.source_repo }}
       - name: Install Host Tools
         run: |
           sudo apt-get update -qq
@@ -305,6 +320,8 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v7
+        with:
+          repository: ${{ inputs.source_repo }}
       - name: Install Host Tools
         run: |
           sudo apt-get update -qq
@@ -346,6 +363,8 @@ jobs:
     needs: [build-libssc]
     steps:
       - uses: actions/checkout@v7
+        with:
+          repository: ${{ inputs.source_repo }}
       - name: Install Host Tools
         run: |
           sudo apt-get update -qq
@@ -391,6 +410,8 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
+        with:
+          repository: ${{ inputs.source_repo }}
       - name: Install Host Tools
         run: |
           sudo apt-get update -qq
@@ -430,6 +451,8 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
+        with:
+          repository: ${{ inputs.source_repo }}
       - name: Install Host Tools
         run: |
           sudo apt-get update -qq
@@ -472,6 +495,8 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
+        with:
+          repository: ${{ inputs.source_repo }}
       - name: Install Host Tools
         run: |
           sudo apt-get update -qq
@@ -512,6 +537,8 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
+        with:
+          repository: ${{ inputs.source_repo }}
       - name: Install Host Tools
         run: |
           sudo apt-get update -qq
@@ -560,6 +587,8 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v7
+        with:
+          repository: ${{ inputs.source_repo }}
       - name: Install Host Tools
         run: |
           sudo apt-get update -qq
@@ -623,6 +652,8 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v7
+        with:
+          repository: ${{ inputs.source_repo }}
       - name: Install Host Tools
         run: |
           sudo apt-get update -qq
