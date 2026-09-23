@@ -108,9 +108,22 @@ if [[ "$ROOTFS_BASE" == "holo-core" ]]; then
 else
   log "写入 pacman 镜像源: $ALARM_MIRROR/\$arch/\$repo"
   install -d "$ALARM_CHROOT/etc/pacman.d"
+  # 多 Server 故障切换：pacman 对每个文件按 Server 顺序逐个尝试（下载失败就换下一个），
+  # 实测单个 mirror.archlinuxarm.org 抖动会报
+  #   error: failed retrieving file ... : Operation too slow. Less than 1 bytes/sec ...
+  #   warning: too many errors from mirror.archlinuxarm.org, skipping for the remainder of this transaction
+  #   error: failed to commit transaction (download library error)
+  # 直接把包作业（尤其 makepkg 的依赖安装）打挂，所以这里列多个镜像做冗余。
   cat > "$ALARM_CHROOT/etc/pacman.d/mirrorlist" <<EOF
 # archlinux-sheng：由 scripts/host/20-alarm-chroot.sh 生成（构建用 chroot，非最终镜像）
+# 可用镜像列表见 https://archlinuxarm.org/about/mirrors
 Server = ${ALARM_MIRROR}/\$arch/\$repo
+Server = http://il.us.mirror.archlinuxarm.org/\$arch/\$repo
+Server = http://ca.us.mirror.archlinuxarm.org/\$arch/\$repo
+Server = http://de.mirror.archlinuxarm.org/\$arch/\$repo
+Server = http://sg.mirror.archlinuxarm.org/\$arch/\$repo
+Server = https://mirrors.tuna.tsinghua.edu.cn/archlinuxarm/\$arch/\$repo
+Server = https://mirrors.ustc.edu.cn/archlinuxarm/\$arch/\$repo
 EOF
 fi
 
@@ -159,13 +172,13 @@ fi
 # 4) 全量更新 + 安装 base-devel（makepkg / fakeroot / gcc / make 全在这里）
 #    --needed 避免重复安装；pacman -Syu 让滚动发行版保持最新（与镜像内一致）
 # ---------------------------------------------------------------------------
-log "pacman -Syu（滚动更新）"
-alarm_chroot_run "$ALARM_CHROOT" pacman -Syu --noconfirm --needed || die "chroot 内 pacman -Syu 失败"
+log "pacman -Syu（滚动更新，带抖动重试）"
+alarm_pacman_retry "$ALARM_CHROOT" -Syu --noconfirm --needed || die "chroot 内 pacman -Syu 失败"
 
 log "安装 base-devel 与构建工具"
 # 必需集合：base-devel 已含 gcc/make/patch/fakeroot/pkgconf；libarchive 提供 bsdtar
 # （deb 载荷解包与 PKGBUILD 的 pkgver() 都要用 bsdtar）
-alarm_chroot_run "$ALARM_CHROOT" pacman -S --noconfirm --needed \
+alarm_pacman_retry "$ALARM_CHROOT" -S --noconfirm --needed \
   base-devel git zstd xz libarchive || die "安装 base-devel 失败"
 
 # 可选集合：个别包名可能在不同时间点不存在或被合并，装不上不影响主流程

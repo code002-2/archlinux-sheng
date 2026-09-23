@@ -49,10 +49,17 @@ alarm_extract_tarball "$ALARM_TARBALL_PATH" "$MOUNT"
 # ---------------------------------------------------------------------------
 log "写入 pacman 镜像源: $ALARM_MIRROR/\$arch/\$repo"
 install -d "$MOUNT/etc/pacman.d"
+# 多 Server 故障切换：pacman 对每个文件按 Server 顺序逐个尝试，单个镜像抖动不会打挂整批作业
 cat > "$MOUNT/etc/pacman.d/mirrorlist" <<EOF
 # archlinux-sheng：由 scripts/host/01-bootstrap-arch.sh 生成
 # 可用镜像列表见 https://archlinuxarm.org/about/mirrors
 Server = ${ALARM_MIRROR}/\$arch/\$repo
+Server = http://il.us.mirror.archlinuxarm.org/\$arch/\$repo
+Server = http://ca.us.mirror.archlinuxarm.org/\$arch/\$repo
+Server = http://de.mirror.archlinuxarm.org/\$arch/\$repo
+Server = http://sg.mirror.archlinuxarm.org/\$arch/\$repo
+Server = https://mirrors.tuna.tsinghua.edu.cn/archlinuxarm/\$arch/\$repo
+Server = https://mirrors.ustc.edu.cn/archlinuxarm/\$arch/\$repo
 EOF
 
 # ---------------------------------------------------------------------------

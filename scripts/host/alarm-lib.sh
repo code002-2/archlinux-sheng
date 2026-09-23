@@ -176,6 +176,29 @@ alarm_tune_pacman_for_chroot() {
 }
 
 # ---------------------------------------------------------------------------
+# pacman 网络抖动重试包装（构建 chroot 用）
+#   实测失败：单个镜像抖动 → "Operation too slow. Less than 1 bytes/sec" →
+#             "failed to commit transaction (download library error)"
+#             → makepkg 报 "'pacman' failed to install missing dependencies" 直接挂掉。
+#   两层防护：① mirrorlist 写多个 Server（pacman 自己会故障切换，见 20-alarm-chroot.sh）
+#             ② 这里再重试 3 次，并加 --disable-download-timeout 放宽低速中断判定
+#                （pacman 5.2+ 支持；chroot 里的 pacman 版本远高于此）
+#   用法: alarm_pacman_retry <chroot 根目录> <pacman 参数...>
+# ---------------------------------------------------------------------------
+alarm_pacman_retry() {
+  local root="${1:?需要 chroot 根目录}"; shift
+  local i
+  for i in 1 2 3; do
+    if alarm_chroot_run "$root" pacman --disable-download-timeout "$@"; then
+      return 0
+    fi
+    warn "pacman $* 第 $i 次失败（疑似镜像抖动），10s 后重试"
+    sleep 10
+  done
+  return 1
+}
+
+# ---------------------------------------------------------------------------
 # 把 chroot 打成可缓存的 tarball（供 GitHub Actions actions/cache 使用）
 #   用法: alarm_pack_chroot <chroot 根目录> <输出 tarball>
 # ---------------------------------------------------------------------------
