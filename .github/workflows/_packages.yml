@@ -69,6 +69,11 @@ on:
         required: false
         type: string
         default: 'alarm'
+      kernel_release:
+        description: '预编译内核取自哪个 release tag（留空 = 最新 release，不推荐）'
+        required: false
+        type: string
+        default: ''
     outputs:
       kernel_version:
         description: 'custom_build 时的内核版本'
@@ -220,10 +225,23 @@ jobs:
         if: inputs.kernel_source != 'custom_build'
         env:
           GH_TOKEN: ${{ github.token }}
+          KERNEL_RELEASE: ${{ inputs.kernel_release }}
         run: |
           set -euo pipefail
           repo="${KERNEL_RELEASES_REPO:-ianchb/sm8550-mainline}"
-          tag="$(gh release list --repo "$repo" --limit 1 --json tagName -q '.[0].tagName')"
+          # ⚠️ 这里**不能**图省事直接取「最新 release」。上游同时存在
+          #      tag `7.2.6`      （09-16 构建，内核 7.2.6-sm8550-00102-gef2f794ee6f0，#241）
+          #      tag `7.2.6-mac`  （09-17 构建，内核 7.2.6-sm8550-00103-g42f3b40c702a）
+          #    而 boot.img 是按钉住的 kernel_release 取的。一旦内核 deb 取到「最新 release」，
+          #    就会出现「rootfs 模块 00103 / boot.img 内核 00102」的版本错配 ——
+          #    vermagic 不匹配 + /usr/lib/modules/<uname -r> 目录名对不上 → 内核不加载模块 → 设备黑屏（实跑踩过）。
+          tag="${KERNEL_RELEASE:-}"
+          if [[ -z "$tag" ]]; then
+            tag="$(gh release list --repo "$repo" --limit 1 --json tagName -q '.[0].tagName')"
+            echo "::warning::未指定 kernel_release，回退到最新 release: $tag（可能与 boot.img 版本错配！）"
+          else
+            echo "使用钉住的 kernel_release tag: $tag"
+          fi
           [ -n "$tag" ] || { echo "::error::无法获取 $repo 的 release tag"; exit 1; }
           mkdir -p kernel-deb
           gh release download "$tag" --repo "$repo" --pattern 'linux-xiaomi-sheng*.deb' \

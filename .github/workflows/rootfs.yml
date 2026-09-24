@@ -172,6 +172,8 @@ jobs:
       kernel_repo: ${{ inputs.kernel_repo }}
       kernel_branch: ${{ inputs.kernel_branch }}
       kernel_config: ${{ inputs.kernel_config }}
+      # 预编译内核必须与 boot.img 同一个 release tag，否则 rootfs 模块版本与内核 vermagic 错配 → 黑屏
+      kernel_release: ${{ inputs.kernel_release }}
       firmware_repo: ${{ inputs.firmware_repo }}
       firmware_branch: ${{ inputs.firmware_branch }}
       rootfs_base: ${{ inputs.rootfs_base }}
