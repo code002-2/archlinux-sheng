@@ -40,13 +40,15 @@ package() {
 
   # 硬校验：xiaomi-sheng-fingerprint 的集成完全依赖这两样，少一个指纹就是哑的。
   #   * fprintd.service —— 那个 drop-in 是 fprintd.service.d/10-xiaomi-sheng-fpc1553.conf
-  #   * D-Bus 激活文件 —— fprintd 平时不动，靠 org.freedesktop.fprintd 按需拉起
+  #   * D-Bus 激活文件 —— fprintd 平时不动，靠 net.reactivated.Fprint 按需拉起
+  # ⚠️ 激活文件名是 **net.reactivated.Fprint.service**，不含 "fprintd" 字样 ——
+  #   第一版这里写成 *fprintd*.service，结果包明明装好了却被自己的校验拦下来（实跑踩过）。
   [[ -f "$pkgdir/usr/lib/systemd/system/fprintd.service" ]] || {
     error "载荷缺少 /usr/lib/systemd/system/fprintd.service"
     exit 1
   }
-  ls "$pkgdir"/usr/share/dbus-1/system-services/*fprintd*.service >/dev/null 2>&1 || {
-    error "载荷缺少 fprintd 的 D-Bus 激活文件"
+  ls "$pkgdir"/usr/share/dbus-1/system-services/*Fprint*.service >/dev/null 2>&1 || {
+    error "载荷缺少 fprintd 的 D-Bus 激活文件（应为 net.reactivated.Fprint.service）"
     exit 1
   }
 }
