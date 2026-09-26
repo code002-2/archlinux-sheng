@@ -337,6 +337,8 @@ jobs:
     name: Build fastfetch
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 60
+    # 首次引入的包，编译失败不该拖垮整个镜像构建（镜像里少个 fastfetch 而已）
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v7
         with:
