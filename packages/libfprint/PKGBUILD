@@ -11,6 +11,10 @@
 # 选项：drivers=all 打开虚拟/环境发现的驱动（与 Arch 一致）；
 #   introspection/doc/installed-tests/gtk-examples 全关 —— 我们不需要 GIR 和文档，
 #   关掉能少拉 gobject-introspection / gtk-doc 一整串构建依赖（CI 里少踩坑）。
+#   ⚠️ makedepends 必须含 glib2-devel：Arch 把 glib2 拆成 glib2 + glib2-devel，
+#   meson 依赖的 glib_mkenums（/usr/bin/glib-mkenums）只在 glib2-devel 里。
+#   漏了会报「Program /usr/bin/glib-mkenums found: NO → ERROR: Dependency 'glib-2.0'
+#   tool variable 'glib_mkenums' contains erroneous value」（实跑踩过）。
 pkgname=libfprint
 pkgver=1.94.10
 pkgrel=1
@@ -19,7 +23,7 @@ arch=('aarch64')
 url="https://fprint.freedesktop.org/"
 license=('LGPL-2.1-or-later')
 depends=('glib2' 'glibc' 'libgcc' 'libgudev' 'libgusb' 'openssl' 'pixman')
-makedepends=('meson' 'ninja' 'git' 'systemd')
+makedepends=('meson' 'ninja' 'git' 'systemd' 'glib2-devel')
 provides=('libfprint-2.so')
 options=('!strip' '!debug' '!lto')
 source=("libfprint-v$pkgver.tar.gz::https://gitlab.freedesktop.org/libfprint/libfprint/-/archive/v$pkgver/libfprint-v$pkgver.tar.gz")
