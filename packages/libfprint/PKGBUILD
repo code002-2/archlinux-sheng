@@ -15,6 +15,10 @@
 #   meson 依赖的 glib_mkenums（/usr/bin/glib-mkenums）只在 glib2-devel 里。
 #   漏了会报「Program /usr/bin/glib-mkenums found: NO → ERROR: Dependency 'glib-2.0'
 #   tool variable 'glib_mkenums' contains erroneous value」（实跑踩过）。
+#   ⚠️ 依赖名用 gcc-libs 而不是 Arch 现在的 libgcc：SteamOS 底包（以及 Valve 那套老格式包）
+#   **没有 libgcc 这个包**，`libgcc_s.so.1` 由 gcc-libs 提供。写 libgcc 会导致
+#   "cannot resolve \"libgcc\", a dependency of \"libfprint\""，并连锁把 fprintd、
+#   xiaomi-sheng-fingerprint 一起拖垮（实跑踩过）。gcc-libs 在底包侧能解析。
 pkgname=libfprint
 pkgver=1.94.10
 pkgrel=1
@@ -22,7 +26,7 @@ pkgdesc="Library for fingerprint readers (for Xiaomi Pad 6S Pro / sheng)"
 arch=('aarch64')
 url="https://fprint.freedesktop.org/"
 license=('LGPL-2.1-or-later')
-depends=('glib2' 'glibc' 'libgcc' 'libgudev' 'libgusb' 'openssl' 'pixman')
+depends=('glib2' 'glibc' 'gcc-libs' 'libgudev' 'libgusb' 'openssl' 'pixman')
 makedepends=('meson' 'ninja' 'git' 'systemd' 'glib2-devel')
 provides=('libfprint-2.so')
 options=('!strip' '!debug' '!lto')

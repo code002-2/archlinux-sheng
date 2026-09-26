@@ -11,6 +11,9 @@
 #   LD_LIBRARY_PATH=/usr/lib/xiaomi-sheng-fingerprint 优先加载补丁版，发行版这套只作兜底。
 # 选项：man/gtk_doc 关掉（省掉 docbook 一串）；pam_modules_dir 按 Arch 布局；
 #   不定义 check() —— 上游 PKGBUILD 需要 cherry-pick 一个测试修复提交，我们不需要跑测试。
+# ⚠️ 依赖名用 gcc-libs 而不是 Arch 现在的 libgcc：SteamOS 底包没有 libgcc 这个包
+#   （libgcc_s.so.1 由 gcc-libs 提供），写 libgcc 会让整个事务解析失败并连锁拖垮
+#   xiaomi-sheng-fingerprint（实跑踩过）。
 pkgname=fprintd
 pkgver=1.94.5
 pkgrel=1
@@ -18,7 +21,7 @@ pkgdesc="D-Bus service to access fingerprint readers (for Xiaomi Pad 6S Pro / sh
 arch=('aarch64')
 url="https://fprint.freedesktop.org/"
 license=('GPL-2.0-or-later')
-depends=('dbus' 'glib2' 'glibc' 'libgcc' 'libfprint' 'pam' 'polkit' 'systemd' 'systemd-libs')
+depends=('dbus' 'glib2' 'glibc' 'gcc-libs' 'libfprint' 'pam' 'polkit' 'systemd' 'systemd-libs')
 makedepends=('meson' 'ninja' 'git' 'systemd' 'pam' 'glib2-devel')
 options=('!strip' '!debug' '!lto')
 source=("fprintd-v$pkgver.tar.gz::https://gitlab.freedesktop.org/libfprint/fprintd/-/archive/v$pkgver/fprintd-v$pkgver.tar.gz")
