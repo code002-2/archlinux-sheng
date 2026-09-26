@@ -329,6 +329,50 @@ jobs:
           if-no-files-found: error
 
   # ---------------------------------------------------------------------------
+  # fastfetch（系统信息工具）：SteamOS/Frame 底包仓库只有 x86_64，aarch64 上装不了，
+  #   所以用自己的 pacman 链路从上游 git 源码打一个包随镜像分发。
+  #   版本不写死（PKGBUILD 的 pkgver() 从 git tag 推导）；编译失败不拖垮出图。
+  # ---------------------------------------------------------------------------
+  build-fastfetch:
+    name: Build fastfetch
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 60
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          repository: ${{ inputs.source_repo }}
+      - name: Install Host Tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq curl git zstd xz-utils
+      - name: Restore ALARM Build Chroot
+        id: alarmcache
+        uses: actions/cache@v6
+        with:
+          path: .chroot-cache/chroot.tar.zst
+          key: chroot-v3-${{ inputs.rootfs_base }}-${{ runner.arch }}-${{ hashFiles('scripts/host/20-alarm-chroot.sh', 'scripts/common/distro-env.sh', 'scripts/host/alarm-lib.sh', 'scripts/host/holo-lib.sh') }}
+      - name: Prepare ALARM Chroot
+        env:
+          ALARM_CHROOT_TAR: .chroot-cache/chroot.tar.zst
+        run: |
+          chmod +x scripts/host/20-alarm-chroot.sh
+          sudo env ROOTFS_BASE="$ROOTFS_BASE" ALARM_CHROOT_TAR="$ALARM_CHROOT_TAR" bash scripts/host/20-alarm-chroot.sh
+      - name: Build (makepkg)
+        run: |
+          chmod +x scripts/host/21-build-pkg.sh
+          sudo env ROOTFS_BASE="$ROOTFS_BASE" bash scripts/host/21-build-pkg.sh fastfetch
+      - name: Save ALARM Build Chroot
+        if: steps.alarmcache.outputs.cache-hit != 'true'
+        run: sudo env ROOTFS_BASE="$ROOTFS_BASE" ALARM_CHROOT_PACK=.chroot-cache/chroot.tar.zst bash scripts/host/20-alarm-chroot.sh
+      - uses: actions/upload-artifact@v7
+        with:
+          name: fastfetch-pkg
+          path: pkgs/*.pkg.tar.*
+          retention-days: 3
+          if-no-files-found: error
+
+  # ---------------------------------------------------------------------------
   # 4) libssc（带 QRTR 等待补丁；ALARM extra 里也有 libssc，但版本为 0.4.4，
   #    我们的包名同为 libssc，rootfs 安装时会先移除仓库版本再装本地包）
   # ---------------------------------------------------------------------------
