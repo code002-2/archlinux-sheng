@@ -1,0 +1,42 @@
+# Maintainer: archlinux-sheng
+# 来源：libfprint 官方源码包 v1.94.10（gitlab.freedesktop.org 归档 tarball）
+#
+# 为什么钉 1.94.10，而不是 Arch 当前的 1.94.100：
+#   xiaomi-sheng-fingerprint 的载荷里带的是**打过 fpc1553 补丁的 libfprint 1.94.10**
+#   （私有装在 /usr/lib/xiaomi-sheng-fingerprint/，由 fprintd 的 drop-in 用
+#   LD_LIBRARY_PATH 指过去，不覆盖发行版文件）。fprintd 链接的是 libfprint-2.so.2，
+#   只有发行版这套 libfprint 与那份补丁版**同为 1.94.10**，ABI 才严格对齐。
+#   上游文档里明确写的是「tested with fprintd 1.94.5 and libfprint 1.94.10」。
+#
+# 选项：drivers=all 打开虚拟/环境发现的驱动（与 Arch 一致）；
+#   introspection/doc/installed-tests/gtk-examples 全关 —— 我们不需要 GIR 和文档，
+#   关掉能少拉 gobject-introspection / gtk-doc 一整串构建依赖（CI 里少踩坑）。
+pkgname=libfprint
+pkgver=1.94.10
+pkgrel=1
+pkgdesc="Library for fingerprint readers (for Xiaomi Pad 6S Pro / sheng)"
+arch=('aarch64')
+url="https://fprint.freedesktop.org/"
+license=('LGPL-2.1-or-later')
+depends=('glib2' 'glibc' 'libgcc' 'libgudev' 'libgusb' 'openssl' 'pixman')
+makedepends=('meson' 'ninja' 'git' 'systemd')
+provides=('libfprint-2.so')
+options=('!strip' '!debug' '!lto')
+source=("libfprint-v$pkgver.tar.gz::https://gitlab.freedesktop.org/libfprint/libfprint/-/archive/v$pkgver/libfprint-v$pkgver.tar.gz")
+sha256sums=('SKIP')
+
+build() {
+  cd "$srcdir/libfprint-v$pkgver" || exit 1
+  meson setup build --prefix=/usr \
+    -Ddrivers=all \
+    -Dintrospection=false \
+    -Ddoc=false \
+    -Dinstalled-tests=false \
+    -Dgtk-examples=false
+  meson compile -C build
+}
+
+package() {
+  cd "$srcdir/libfprint-v$pkgver" || exit 1
+  DESTDIR="$pkgdir" meson install --no-rebuild -C build
+}

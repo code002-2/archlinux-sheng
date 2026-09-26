@@ -747,6 +747,101 @@ jobs:
           if-no-files-found: error
 
   # ---------------------------------------------------------------------------
+  # 12) libfprint + fprintd（指纹栈）
+  #   为什么需要：SteamOS 底包（Valve 的 deckard 仓库 + 被钉住的 extra 快照）**没有指纹栈**，
+  #   实测 xiaomi-sheng-fingerprint 装不上：
+  #       warning: cannot resolve "fprintd", a dependency of "xiaomi-sheng-fingerprint"
+  #   而它的载荷里只有**打过 FPC1553 补丁的私有 libfprint 1.94.10**
+  #   （/usr/lib/xiaomi-sheng-fingerprint/，靠 fprintd 的 drop-in 用 LD_LIBRARY_PATH 生效），
+  #   本身不含 fprintd 守护进程 —— 所以这两个都得我们自己编、随镜像分发。
+  #   版本刻意钉成 1.94.10 / 1.94.5（上游文档里实测过的组合），保证 fprintd 与
+  #   libfprint-2.so.2 的 ABI 严格对齐（补丁版也是 1.94.10）。
+  # ---------------------------------------------------------------------------
+  build-libfprint:
+    name: Build libfprint
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          repository: ${{ inputs.source_repo }}
+      - name: Install Host Tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq curl git zstd xz-utils
+      - name: Restore ALARM Build Chroot
+        id: alarmcache
+        uses: actions/cache@v6
+        with:
+          path: .chroot-cache/chroot.tar.zst
+          key: chroot-v3-${{ inputs.rootfs_base }}-${{ runner.arch }}-${{ hashFiles('scripts/host/20-alarm-chroot.sh', 'scripts/common/distro-env.sh', 'scripts/host/alarm-lib.sh', 'scripts/host/holo-lib.sh') }}
+      - name: Prepare ALARM Chroot
+        env:
+          ALARM_CHROOT_TAR: .chroot-cache/chroot.tar.zst
+        run: |
+          chmod +x scripts/host/20-alarm-chroot.sh
+          sudo env ROOTFS_BASE="$ROOTFS_BASE" ALARM_CHROOT_TAR="$ALARM_CHROOT_TAR" bash scripts/host/20-alarm-chroot.sh
+      - name: Build (makepkg)
+        run: |
+          chmod +x scripts/host/21-build-pkg.sh
+          sudo env ROOTFS_BASE="$ROOTFS_BASE" bash scripts/host/21-build-pkg.sh libfprint
+      - name: Save ALARM Build Chroot
+        if: steps.alarmcache.outputs.cache-hit != 'true'
+        run: sudo env ROOTFS_BASE="$ROOTFS_BASE" ALARM_CHROOT_PACK=.chroot-cache/chroot.tar.zst bash scripts/host/20-alarm-chroot.sh
+      - uses: actions/upload-artifact@v7
+        with:
+          name: libfprint-pkg
+          path: pkgs/libfprint-*.pkg.tar.*
+          retention-days: 3
+          if-no-files-found: error
+
+  # fprintd 编译期需要 libfprint 的头文件/pkg-config，所以先把刚编出来的包预装进 chroot
+  #   （与 iio-sensor-proxy 依赖 libssc 的处理方式完全一致）
+  build-fprintd:
+    name: Build fprintd
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 60
+    needs: [build-libfprint]
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          repository: ${{ inputs.source_repo }}
+      - name: Install Host Tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq curl git zstd xz-utils
+      - uses: actions/download-artifact@v8
+        with:
+          name: libfprint-pkg
+          path: deps
+      - name: Restore ALARM Build Chroot
+        id: alarmcache
+        uses: actions/cache@v6
+        with:
+          path: .chroot-cache/chroot.tar.zst
+          key: chroot-v3-${{ inputs.rootfs_base }}-${{ runner.arch }}-${{ hashFiles('scripts/host/20-alarm-chroot.sh', 'scripts/common/distro-env.sh', 'scripts/host/alarm-lib.sh', 'scripts/host/holo-lib.sh') }}
+      - name: Prepare ALARM Chroot
+        env:
+          ALARM_CHROOT_TAR: .chroot-cache/chroot.tar.zst
+        run: |
+          chmod +x scripts/host/20-alarm-chroot.sh
+          sudo env ROOTFS_BASE="$ROOTFS_BASE" ALARM_CHROOT_TAR="$ALARM_CHROOT_TAR" bash scripts/host/20-alarm-chroot.sh
+      - name: Build (makepkg, 预装 libfprint)
+        run: |
+          chmod +x scripts/host/21-build-pkg.sh
+          PRE="$(ls -1 deps/libfprint-*.pkg.tar.* | head -n1)"
+          sudo env PKG_PREINSTALL="$PRE" bash scripts/host/21-build-pkg.sh fprintd
+      - name: Save ALARM Build Chroot
+        if: steps.alarmcache.outputs.cache-hit != 'true'
+        run: sudo env ROOTFS_BASE="$ROOTFS_BASE" ALARM_CHROOT_PACK=.chroot-cache/chroot.tar.zst bash scripts/host/20-alarm-chroot.sh
+      - uses: actions/upload-artifact@v7
+        with:
+          name: fprintd-pkg
+          path: pkgs/fprintd-*.pkg.tar.*
+          retention-days: 3
+          if-no-files-found: error
+
+  # ---------------------------------------------------------------------------
   # 说明：这里原本还有一个「一次构建全部包」的汇总作业（21-build-pkg.sh --all）。
   # 已移除，原因有两条（都不是风格问题）：
   #   1) 它会在每次构建里把 15 个包全部重建一遍，与上面逐个作业完全重复（浪费 30+ 分钟）；

@@ -1,0 +1,52 @@
+# Maintainer: archlinux-sheng
+# 来源：fprintd 官方源码包 v1.94.5（gitlab.freedesktop.org 归档 tarball）
+#
+# 为什么要自己编：SteamOS 底包（Valve 的 deckard 仓库 + 被钉住的 extra 快照）**没有 fprintd**，
+#   实测 `pacman -U` 报 "cannot resolve \"fprintd\", a dependency of \"xiaomi-sheng-fingerprint\""，
+#   而 xiaomi-sheng-fingerprint 只提供**打过补丁的私有 libfprint**（FPC1553 驱动）和一份
+#   fprintd.service.d/ drop-in（让 fprintd 走那份私有库），本身不含 fprintd 守护进程。
+#   所以发行版这套 fprintd 必须由我们分发。
+# 版本：1.94.5 —— 与上面 libfprint 1.94.10 组成上游实测过的组合；
+#   且与补丁版 libfprint 同 soname（libfprint-2.so.2），运行时由 drop-in 的
+#   LD_LIBRARY_PATH=/usr/lib/xiaomi-sheng-fingerprint 优先加载补丁版，发行版这套只作兜底。
+# 选项：man/gtk_doc 关掉（省掉 docbook 一串）；pam_modules_dir 按 Arch 布局；
+#   不定义 check() —— 上游 PKGBUILD 需要 cherry-pick 一个测试修复提交，我们不需要跑测试。
+pkgname=fprintd
+pkgver=1.94.5
+pkgrel=1
+pkgdesc="D-Bus service to access fingerprint readers (for Xiaomi Pad 6S Pro / sheng)"
+arch=('aarch64')
+url="https://fprint.freedesktop.org/"
+license=('GPL-2.0-or-later')
+depends=('dbus' 'glib2' 'glibc' 'libgcc' 'libfprint' 'pam' 'polkit' 'systemd' 'systemd-libs')
+makedepends=('meson' 'ninja' 'git' 'systemd' 'pam')
+options=('!strip' '!debug' '!lto')
+source=("fprintd-v$pkgver.tar.gz::https://gitlab.freedesktop.org/libfprint/fprintd/-/archive/v$pkgver/fprintd-v$pkgver.tar.gz")
+sha256sums=('SKIP')
+
+build() {
+  cd "$srcdir/fprintd-v$pkgver" || exit 1
+  meson setup build --prefix=/usr \
+    -Dman=false \
+    -Dgtk_doc=false \
+    -Dsystemd=true \
+    -Dpam_modules_dir=/usr/lib/security
+  meson compile -C build
+}
+
+package() {
+  cd "$srcdir/fprintd-v$pkgver" || exit 1
+  DESTDIR="$pkgdir" meson install --no-rebuild -C build
+
+  # 硬校验：xiaomi-sheng-fingerprint 的集成完全依赖这两样，少一个指纹就是哑的。
+  #   * fprintd.service —— 那个 drop-in 是 fprintd.service.d/10-xiaomi-sheng-fpc1553.conf
+  #   * D-Bus 激活文件 —— fprintd 平时不动，靠 org.freedesktop.fprintd 按需拉起
+  [[ -f "$pkgdir/usr/lib/systemd/system/fprintd.service" ]] || {
+    error "载荷缺少 /usr/lib/systemd/system/fprintd.service"
+    exit 1
+  }
+  ls "$pkgdir"/usr/share/dbus-1/system-services/*fprintd*.service >/dev/null 2>&1 || {
+    error "载荷缺少 fprintd 的 D-Bus 激活文件"
+    exit 1
+  }
+}
