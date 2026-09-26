@@ -1,0 +1,51 @@
+# Maintainer: archlinux-sheng
+# fastfetch：SteamOS/Frame 底包没有 aarch64 仓库（Valve 的源只到 x86_64），
+#   所以用它自己的 pacman 链路从上游源码打一个包，一起进镜像。
+# 版本不写死：source 用 git，pkgver() 从 tag 推导 —— 避免手写版本号猜错导致 404。
+# 依赖：只依赖 glibc 与 curl（fastfetch 的 JSON 库自带）；构建用 cmake。
+pkgname=fastfetch
+pkgver=r0.0.0
+pkgrel=1
+pkgdesc="Feature-rich and performance oriented neofetch-like system information tool"
+arch=('aarch64')
+url="https://github.com/fastfetch-cli/fastfetch"
+license=('MIT')
+depends=('glibc' 'curl')
+makedepends=('cmake' 'ninja' 'git' 'pkgconf')
+options=('!debug' '!lto')
+source=("git+https://github.com/fastfetch-cli/fastfetch.git")
+sha256sums=('SKIP')
+
+pkgver() {
+  cd fastfetch
+  # 优先用 tag 推导（v2.51.1-12-gabc1234 → 2.51.1.r12.gabc1234）；
+  # 万一仓库没有 tag 可达，就退回“提交数 + 短哈希”，保证 pkgver 一定合法
+  if git describe --tags --long >/dev/null 2>&1; then
+    git describe --tags --long | sed 's/^v//; s/\([^-]*-g\)/r\1/; s/-/./g'
+  else
+    printf 'r%s.g%s' "$(git rev-list --count HEAD)" "$(git rev-parse --short HEAD)"
+  fi
+}
+
+build() {
+  cd fastfetch
+  # CMAKE_POLICY_VERSION_MINIMUM：CMake 4 对老项目要求显式声明最低策略版本
+  cmake -B build -S . -G Ninja \
+    -DCMAKE_BUILD_TYPE=None \
+    -DCMAKE_INSTALL_PREFIX=/usr \
+    -DCMAKE_INSTALL_LIBDIR=/usr/lib \
+    -DBUILD_TESTS=OFF \
+    -DENABLE_SYSTEM_YYJSON=OFF \
+    -DCMAKE_POLICY_VERSION_MINIMUM=3.5
+  cmake --build build
+}
+
+package() {
+  cd fastfetch
+  DESTDIR="$pkgdir" cmake --install build
+  # 打个标记，便于在镜像里确认这个包真的进来了
+  install -Dm644 /dev/stdin "$pkgdir/usr/share/doc/fastfetch/README.sheng" <<'EOF'
+本包由 archlinux-sheng 的 CI 用上游 git 源码构建，随 steamos-sheng 镜像一起分发。
+上游项目：https://github.com/fastfetch-cli/fastfetch （MIT）
+EOF
+}
