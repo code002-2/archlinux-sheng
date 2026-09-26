@@ -337,6 +337,18 @@ jobs:
           ./scripts/host/11-make-bootimg.sh Image.gz-dtb_sheng
 
       # ---------------------------------------------------------------------
+      # 给 boot.img 的 cmdline 补 rootwait（关键，实机验证过）：
+      #   root=PARTLABEL=… 的解析要等块设备枚举 + 分区表扫描完成；没有 rootwait 时内核
+      #   找不到设备就直接 panic，而显示器尚未初始化 → 屏幕全黑、一个字都没有。
+      #   这是时序竞态，同一份镜像有时能起有时全黑。上游 release 的 boot.img 不带它，
+      #   所以两条路径（prebuilt / custom）出来的 boot.img 都要补。
+      # ---------------------------------------------------------------------
+      - name: Add rootwait to boot.img
+        run: |
+          chmod +x scripts/host/05-patch-bootimg-cmdline.sh
+          bash scripts/host/05-patch-bootimg-cmdline.sh boot.img rootwait
+
+      # ---------------------------------------------------------------------
       # 收集 _packages.yml 产出的全部 pacman 包到 pkgs/
       # ---------------------------------------------------------------------
       - name: Collect kernel (prebuilt)
